@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.license      = "MIT"
   s.author       = "Lita"
   s.platform     = :osx, '10.12'
-  s.source       = { :git => "https://github.com/OperatorFoundation/SwiftyOpenVPNClient.git", :tag => "1.0.0" }
+  s.source       = { :git => "https://github.com/OperatorFoundation/SwiftyOpenVPNClient.git" }
   s.source_files  = "SwiftyOpenVPNClient", "SwiftyOpenVPNClient/**/*.{h,m,swift}"
 
 end
