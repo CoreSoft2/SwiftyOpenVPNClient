@@ -90,7 +90,7 @@ public class OpenVPN: NSObject
     
     func stop(completion:(_ stopped:Bool) -> Void)
     {
-        
+        connectTask.terminate()
     }
     
     private func processArguments() -> [String]
