@@ -96,6 +96,7 @@ public class OpenVPN: NSObject
         if connectTask.isRunning
         {
             connectTask.terminate()
+            completion(!connectTask.isRunning)
         }
     }
     
