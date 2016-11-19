@@ -44,6 +44,26 @@ public class OpenVPN: NSObject
         {
             self.directory = directoryURL.path
         }
+        
+        //Add listerner for app termination so that openVPN connection can be killed
+        NotificationCenter.default.addObserver(forName: Notification.Name.NSApplicationWillTerminate, object: nil, queue: nil, using:
+            {
+                notification in
+                self.stop(completion:
+                    {
+                        (connectionStopped) in
+                        
+                        if connectionStopped == false
+                        {
+                            print("Attempted to kill OpenVPN process on program exit and failed.")
+                        }
+                        else
+                        {
+                            print("Killed OpenVPN process for program exit.")
+                        }
+                })
+                
+        })
     }
     
     func getApplicationDirectory() -> (URL)?
@@ -106,8 +126,9 @@ public class OpenVPN: NSObject
         if OpenVPN.connectTask != nil
         {
             OpenVPN.connectTask!.terminate()
-            completion(!OpenVPN.connectTask.isRunning)
         }
+        
+        completion(!OpenVPN.connectTask.isRunning)
     }
     
     private func connectToOpenVPNArguments() -> [String]
