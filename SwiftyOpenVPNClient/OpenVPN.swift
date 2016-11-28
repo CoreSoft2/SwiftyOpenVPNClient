@@ -7,12 +7,16 @@
 //
 
 import Cocoa
+import ServiceManagement
+import SecurityFoundation
 
 public let kOutputTextNotification = "OutputFromBashNotification"
 public let outputStringKey = "outputString"
 
 public class OpenVPN: NSObject
 {
+    static var connectTask:Process!
+    
     /*Output Verbosity: Level 3 is recommended if you want a good summary of  what's
     happening without being swamped by output.
     
@@ -23,9 +27,6 @@ public class OpenVPN: NSObject
     ets.
     6  to  11  --  Debug  info range (see errlevel.h for additional information on
     debug levels).*/
-    
-    static var connectTask:Process!
-    
     public var verbosity = 3
     public var configFileName = "config.ovpn"
     public var outputPipe:Pipe?
@@ -65,6 +66,65 @@ public class OpenVPN: NSObject
                 
         })
     }
+    
+    //SMJobBless:  Apple's recommended way of running privileged helper
+    func blessHelper(label:String) -> Bool
+    {
+        var result = false
+        
+        // Obtain an Authorization Reference
+        // You can do this at the beginning of the app. It has no extra rights until later
+        var authRef: AuthorizationRef? = nil
+        
+        let status = AuthorizationCreate(nil, nil, [], &authRef)
+        
+        // There's really no reason for this to fail, but let's be careful
+        guard status == errAuthorizationSuccess
+        else
+        {
+            fatalError("Cannot create AuthorizationRef: \(status)")
+        }
+        
+        //Ask user for admin privilege
+        var authItem = AuthorizationItem(name: kSMRightBlessPrivilegedHelper, valueLength: 0, value: nil, flags: 0)
+        var authRights = AuthorizationRights(count: 1, items: &authItem)
+        let flags: AuthorizationFlags = [.interactionAllowed, .extendRights, .preAuthorize]
+    
+        /* Obtain the right to install our privileged helper tool (kSMRightBlessPrivilegedHelper). */
+        let status2: OSStatus = AuthorizationCopyRights(authRef!, &authRights, nil, flags, nil)
+        if status2 != errAuthorizationSuccess
+        {
+            //TODO: Unable to obtain admin privilege handle error
+            print("UNABLE TO OBTAIN ADMIN PRIVILEGE")
+        }
+        else
+        {
+            /* This does all the work of verifying the helper tool against the application
+             * and vice-versa. Once verification has passed, the embedded launchd.plist
+             * is extracted and placed in /Library/LaunchDaemons and then loaded. The
+             * executable is placed in /Library/PrivilegedHelperTools.
+             */
+            
+            //TODO: This label must be globally unique and matches the product name of your helper
+            //This also *should* not fail
+            let label = "org.OperatorFoundation.MoonbounceHelper"
+            var error: Unmanaged<CFError>?
+            
+            //Run the privileged helper
+            result = SMJobBless(kSMDomainSystemLaunchd, label as CFString, authRef!, &error)
+                
+            if !result
+            {
+                print("Elevating privileges failed: \(error.debugDescription)")
+            }
+
+        }
+        
+        // 4. Release the Authorization Reference
+        AuthorizationFree(authRef!, [])
+        return result
+    }
+
     
     func getApplicationDirectory() -> (URL)?
     {
